@@ -1,149 +1,101 @@
-PBM Logistics 360 - A Real-Time Pharmacy Logistics Analytics Platform
-This project is a complete, end-to-end data engineering solution built on Google Cloud Platform (GCP) to track and analyze the lifecycle of specialty pharmacy orders. It transforms a chaotic stream of operational events into a clean, reliable single source of truth, powering two distinct data products: a real-time operational dashboard and a business intelligence dashboard for patient feedback analysis.
+# 🚚 PBM Logistics 360 - A Real-Time Pharmacy Logistics Analytics Platform
 
-🚀 Live Demo & Dashboard Preview
-Live Operational Dashboard: [Link to your deployed Streamlit App on Cloud Run]
+A complete, end-to-end **data engineering solution** built on **Google Cloud Platform (GCP)**. This project ingests and processes real-time event data from a specialty pharmacy's logistics chain to deliver powerful operational analytics and monitoring capabilities.
 
-BI Patient Feedback Dashboard: [Link to your Looker Studio Report]
+---
 
-🎯 The Problem Statement
-In a typical specialty pharmacy, logistics data is siloed across multiple systems. This creates an operational "black box" where:
+## 📌 Problem Statement
 
-There is no real-time visibility into order status or fulfillment bottlenecks.
+In most specialty pharmacies, logistics data is scattered across different systems—order management, insurance, scanners, shipping. This creates a logistics "black box" where:
 
-Analysts spend days manually joining disparate CSV files to create stale, historical reports.
+- 🚫 No real-time visibility into order status or fulfillment bottlenecks.
+- 🧩 Analysts manually join CSVs for outdated, error-prone reports.
+- 📞 Issues are discovered *only* when a patient calls—impacting satisfaction.
 
-Problems are only discovered reactively when a patient calls, leading to a poor experience.
+**PBM Logistics 360** solves this with a unified, automated analytics platform that offers **real-time insights** and **historical accuracy**.
 
-This project solves this by building a centralized, automated analytics platform that provides both real-time insights and historical accuracy.
+---
 
-🏗️ Architecture: The Lambda Architecture on GCP
-This project implements a Lambda Architecture to provide a unified solution for both real-time (speed layer) and comprehensive (batch layer) data processing. This ensures our users get both up-to-the-second operational metrics and fully accurate historical analytics.
+## 🎯 Data Products Delivered
 
-The Batch Layer (Source of Truth):
+1. **🖥️ Operational Command Center**  
+   A real-time Streamlit dashboard to monitor active orders and logistics health.
 
-Purpose: To create a complete, accurate, and fully modeled historical record of all data.
+2. **📊 Patient Satisfaction Dashboard**  
+   A Looker Studio report for analyzing trends and improving service quality.
 
-Process: A daily job orchestrated by Cloud Composer (Airflow) executes a series of SQL scripts in BigQuery. This job transforms all of the day's raw data from the Bronze layer into a clean, aggregated Gold layer (star schema). This is our system's source of truth.
+---
 
-The Speed Layer (Real-Time Insights):
+## 🏗️ Architecture: Lambda Design on GCP
 
-Purpose: To provide immediate, low-latency insights on very recent data.
+This project implements a **Lambda Architecture** to blend both **batch** and **stream** processing for a complete view of operations.
 
-Process: A dedicated, streaming Dataflow job subscribes to the Pub/Sub topic. It performs simple, in-memory aggregations (e.g., counting events in the last 5 minutes) and writes these real-time metrics to a dedicated, low-latency table in BigQuery.
+### 1️⃣ Batch Layer – Source of Truth
+- **Tool**: Cloud Composer (Airflow) + BigQuery
+- **Purpose**: Create fully modeled historical datasets
+- **Process**: Daily DAG jobs transform Bronze → Silver → Gold (Star Schema)
 
-The Serving Layer (Unified View):
+### 2️⃣ Speed Layer – Real-Time Metrics
+- **Tool**: Pub/Sub + Dataflow + BigQuery
+- **Purpose**: Deliver low-latency insights from recent data
+- **Process**: Dataflow reads Pub/Sub events, aggregates in memory, and writes to a live BigQuery table
 
-Purpose: To present a seamless view of both real-time and historical data to the end-user.
+### 3️⃣ Serving Layer – Unified Analytics View
+- **Tool**: Streamlit + BigQuery
+- **Purpose**: Combine real-time and batch data for complete operational and business visibility
 
-Process: Our Streamlit dashboard intelligently queries both layers. It pulls long-term trends and historical reports from the Batch Layer's Gold tables, while simultaneously pulling the live, up-to-the-second KPIs from the Speed Layer's table.
+---
 
-🛠️ Tech Stack
-Cloud Provider: Google Cloud Platform (GCP)
+## 🧱 Tech Stack
 
-Data Ingestion:
+| Component            | Tool/Service                 |
+|---------------------|-----------------------------|
+| **Cloud Provider**  | Google Cloud Platform (GCP) |
+| **Real-Time Ingestion** | Pub/Sub, Dataflow        |
+| **Batch Processing** | Cloud Composer (Airflow)   |
+| **Transformation & Modeling** | BigQuery (SQL)     |
+| **Transactional DB** | Cloud SQL (PostgreSQL)     |
+| **Visualization**   | Streamlit, Looker Studio    |
+| **Deployment**      | Cloud Run, Artifact Registry, Cloud Build |
+| **Version Control** | GitHub                      |
 
-Pub/Sub: Real-time event streaming.
+---
 
-Dataflow: Serverless stream processing for both raw ingest and real-time analytics.
+## 🗂️ Data Model: Medallion Architecture in BigQuery
 
-Cloud Functions: Serverless API for survey data.
+### 🔹 Bronze Layer (`pbm_bronze.raw_orders`)
+- Immutable raw events exactly as received
 
-Data Warehouse: BigQuery
+### 🔸 Silver Layer (`pbm_silver.stg_order_events`)
+- Cleaned, filtered, standardized
+- Example: casting types, lowercasing fields, removing duplicates
 
-Transactional Database: Cloud SQL for PostgreSQL
+### 🥇 Gold Layer (`pbm_gold`)
+Final analytical tables optimized for business queries:
 
-Data Orchestration: Cloud Composer (Apache Airflow)
+- `dim_patients` – Unique pseudonymized patients
+- `dim_drugs` – Drug catalog
+- `fact_order_lifecycle` – Order journey metrics (timestamps, duration, status)
 
-Dashboard & Visualization:
+---
 
-Streamlit: For the interactive operational dashboard.
+## 🚀 Setup & Deployment Guide
 
-Looker Studio: For the BI analytics dashboard.
+### ✅ 1. Prerequisites
+- A GCP Project with billing enabled
+- Google Cloud SDK installed locally
+- A GitHub repo for source control
 
-Deployment & CI/CD:
+### 🏗️ 2. Infrastructure Setup
+```bash
+# Enable necessary GCP APIs
+gcloud services enable pubsub.googleapis.com \
+    dataflow.googleapis.com \
+    composer.googleapis.com \
+    bigquery.googleapis.com \
+    run.googleapis.com
 
-Cloud Run: Serverless hosting for the Streamlit app.
-
-Artifact Registry: For storing container images.
-
-Cloud Build: For automated container builds.
-
-GitHub: For source code management.
-
-🗂️ Data Model (Medallion Architecture)
-We use a layered approach in BigQuery for our Batch Layer to ensure data quality and maintainability.
-
-Bronze Layer (pbm_bronze.raw_orders):
-
-Purpose: Immutable, raw copy of all source data.
-
-Schema: Contains the structured event data exactly as it arrived.
-
-Silver Layer (pbm_silver.stg_order_events):
-
-Purpose: An intermediate layer for cleaning, standardizing, and filtering data.
-
-Transformations: Data type casting, basic quality checks, standardization (e.g., lowercasing event_type).
-
-Gold Layer (pbm_gold):
-
-Purpose: The final, business-ready, aggregated data model. Optimized for analytics.
-
-Tables:
-
-dim_patients: A dimension table with unique, pseudonymized patient information.
-
-dim_drugs: A dimension table for unique drugs.
-
-fact_order_lifecycle: The central fact table, with one row per order, summarizing its entire journey.
-
-🚀 Setup and Deployment
-Follow these steps to set up and run the project in your own GCP environment.
-
-1. Prerequisites
-A GCP Project with billing enabled.
-
-Google Cloud SDK (gcloud) installed and configured locally.
-
-A GitHub repository for your code.
-
-2. Infrastructure Setup
-Enable all necessary GCP APIs (Pub/Sub, Dataflow, BigQuery, Composer, Cloud Run, etc.).
-
-Create the BigQuery datasets: pbm_bronze, pbm_silver, pbm_gold.
-
-Create the pbm_bronze.raw_orders table.
-
-Set up a Cloud Composer environment.
-
-3. Run the Transformation
-Upload the SQL scripts from the /sql_scripts directory to your Composer GCS bucket.
-
-Upload the DAG file (pbm_pipeline_dag.py) to your Composer DAGs folder.
-
-Trigger the Airflow DAG to build the Silver and Gold tables.
-
-4. Deploy the Dashboard
-Navigate to the /dashboard directory.
-
-Run the deployment command:
-
-gcloud run deploy pbm-dashboard \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated
-
-✨ Future Enhancements
-This platform provides a solid foundation. Future sprints could include:
-
-Advanced Data Quality: Integrate a tool like Great Expectations or dbt tests into the Airflow DAG to run comprehensive data quality tests after each transformation step.
-
-Machine Learning:
-
-Build a model to predict shipping delays based on carrier, time of day, and warehouse data.
-
-Perform sentiment analysis on the patient feedback comments to automatically categorize them as positive, negative, or neutral.
-
-Cost Optimization: Implement table partitioning and lifecycle policies in BigQuery to automatically archive old data to GCS, reducing long-term storage costs.# pbm-order-tracking-gcp
-End-to-end PBM Order Tracking project using GCP, Python, Airflow, BigQuery, Streamlit, Looker
+# Create BigQuery datasets
+bq mk --dataset pbm_bronze
+bq mk --dataset pbm_silver
+bq mk --dataset pbm_gold
